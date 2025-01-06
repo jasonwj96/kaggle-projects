@@ -1,3 +1,6 @@
+[project]
+data_repository = "/home/jason/Desktop/data"
+
 [tool.poetry]
 name = "kaggle-projects"
 version = "1.0.0"
