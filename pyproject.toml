@@ -1,14 +1,18 @@
 [project]
-data_repository = "/home/jason/Desktop/data"
+data_repository_linux = "/home/jason/Desktop/data"
+data_repository_windows = "C:/Users/Admin/Desktop/Datasets"
+name = "kaggle-projects"
 
 [tool.poetry]
-name = "kaggle-projects"
 version = "1.0.0"
 description = "Kaggle projects repo"
 authors = ["Jason Wedderburn <jasonwj96@gmail.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 numpy = "^2.2.0"
 torch = "^2.5.1"
+pandas="^2.2.3"
+jupyter = "^1.1.1"
+plotly = "^6.0.0"
