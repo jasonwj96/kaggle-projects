@@ -7,14 +7,18 @@ import plotly.express as px
 import numpy as np
 
 
-def load_dataset(dataset_name: str, index: bool = True) -> pd.DataFrame:
+def load_dataset(dataset_name: str, training_set: bool = True, index: bool = True) -> pd.DataFrame:
     with open("pyproject.toml", "rb") as f:
         data = tomllib.load(f)
-        dataset_path = Path(data["project"]["data_repository_linux"], dataset_name, "train.csv")
+        dataset_path = Path(data["project"]["data_repository_linux"], dataset_name)
 
         if os.name == "nt":
-            dataset_path = Path(data["project"]["data_repository_windows"], dataset_name,
-                                "train.csv")
+            dataset_path = Path(data["project"]["data_repository_windows"], dataset_name)
+
+        if training_set:
+            dataset_path = Path(dataset_path, "train.csv")
+        else:
+            dataset_path = Path(dataset_path, "test.csv")
 
         if index:
             return pd.read_csv(dataset_path)
@@ -22,7 +26,7 @@ def load_dataset(dataset_name: str, index: bool = True) -> pd.DataFrame:
             return pd.read_csv(dataset_path, index_col=[0])
 
 
-def reduce_mem_usage(props, deep=False):
+def optimize_memory(props, deep=False):
     start_mem_usg = props.memory_usage(deep=deep).sum() / 1024 ** 2
     print("Memory usage of properties dataframe is :", start_mem_usg, " MB")
     na_list = []  # Keeps track of columns that have missing values filled in.
