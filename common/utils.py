@@ -1,35 +1,99 @@
 import os
-import tomllib
 from pathlib import Path
 
 import pandas as pd
-import plotly.express as px
 import numpy as np
+from xgboost import XGBRegressor, XGBClassifier
+from enum import Enum
 
 
-def load_dataset(dataset_name: str, training_set: bool = True, index: bool = True) -> pd.DataFrame:
-    with open("pyproject.toml", "rb") as f:
-        data = tomllib.load(f)
-        dataset_path = Path(data["project"]["data_repository_linux"], dataset_name)
+class DatasetType(Enum):
+    TRAIN = 0
+    TEST = 1
+    VALIDATION = 2
 
-        if os.name == "nt":
-            dataset_path = Path(data["project"]["data_repository_windows"], dataset_name)
 
-        if training_set:
-            dataset_path = Path(dataset_path, "train.csv")
-        else:
-            dataset_path = Path(dataset_path, "test.csv")
+def load_dataset(name: str, dataset_type: DatasetType = DatasetType.TRAIN,
+                 index: bool = True) -> pd.DataFrame:
+    """
+      Loads a dataset from the specified data repository.
 
-        if index:
-            return pd.read_csv(dataset_path)
-        else:
-            return pd.read_csv(dataset_path, index_col=[0])
+      This function constructs the path to a dataset based on the provided `name` and
+      `dataset_type`.
+      It retrieves the base data repository path from the environment variable `DATA_REPOSITORY`.
+      If the environment variable is not set, an `EnvironmentError` is raised.
+
+      Args:
+          name (str): The name of the dataset to load (e.g., "dataset_name").
+          dataset_type (DatasetType, optional): The type of dataset to load. Can be one of
+              `DatasetType.TRAIN`, `DatasetType.TEST`, or `DatasetType.VALIDATION`. Defaults to
+              `DatasetType.TRAIN`.
+          index (bool, optional): Whether to set the first column of the CSV file as the index.
+          Defaults to `True`.
+
+      Raises:
+          EnvironmentError: If the environment variable `DATA_REPOSITORY` is not set.
+
+      Returns:
+          pd.DataFrame: A pandas DataFrame containing the loaded dataset.
+
+      Example:
+          df = load_dataset("my_dataset", dataset_type=DatasetType.TEST, index=False)
+      """
+
+    dataset_path = os.getenv('DATA_REPOSITORY')
+
+    if dataset_path is None:
+        raise EnvironmentError("Required environment variable 'DATA_REPOSITORY' is not set.")
+
+    dataset_path = Path(dataset_path, name)
+
+    if dataset_type == DatasetType.TRAIN:
+        dataset_path = Path(dataset_path, "train.csv")
+    elif dataset_type == DatasetType.TEST:
+        dataset_path = Path(dataset_path, "test.csv")
+    elif dataset_type == DatasetType.VALIDATION:
+        dataset_path = Path(dataset_path, "validation.csv")
+
+    if index:
+        return pd.read_csv(dataset_path)
+    else:
+        return pd.read_csv(dataset_path, index_col=[0])
 
 
 def optimize_memory(props, deep=False):
+    """
+       Optimizes memory usage of a pandas DataFrame by converting columns to more efficient data
+       types.
+
+       This function iterates over the columns of the input DataFrame (`props`) and attempts to
+       downcast
+       numerical columns to the smallest possible integer or float data types without losing
+       information.
+       If a column contains missing values (NaNs), it will be filled before attempting to convert
+       the data type.
+
+       Args:
+           props (pandas.DataFrame): The DataFrame whose memory usage needs to be optimized.
+           deep (bool, optional): Whether or not to perform a deep memory usage calculation.
+           Defaults to False.
+
+       Returns:
+           pandas.DataFrame: The input DataFrame with optimized memory usage.
+           list: A list of column names where missing values were filled.
+
+       Raises:
+           None: This function does not raise any exceptions.
+
+       Example:
+           optimized_df, na_columns = optimize_memory(df)
+       """
     start_mem_usg = props.memory_usage(deep=deep).sum() / 1024 ** 2
+
     print("Memory usage of properties dataframe is :", start_mem_usg, " MB")
+
     na_list = []  # Keeps track of columns that have missing values filled in.
+
     for col in props.columns:
         if props[col].dtype != object:  # Exclude strings
 
@@ -90,3 +154,27 @@ def optimize_memory(props, deep=False):
     print("Memory usage is: ", mem_usg, " MB")
     print("This is ", 100 * mem_usg / start_mem_usg, "% of the initial size")
     return props, na_list
+
+
+def get_params(model: XGBRegressor | XGBClassifier):
+    """
+      Retrieves the hyperparameters of a given XGBoost model (either XGBRegressor or XGBClassifier).
+
+      This function calls the `get_params()` method on the provided XGBoost model and returns the
+      parameters in a pandas DataFrame for easy inspection and analysis. The DataFrame contains two
+      columns: 'Parameter' (the name of the hyperparameter) and 'Value' (the corresponding value).
+
+      Args:
+          model (XGBRegressor | XGBClassifier): The XGBoost model (either a regressor or classifier)
+              from which to retrieve the hyperparameters.
+
+      Returns:
+          pandas.DataFrame: A DataFrame containing the hyperparameters and their corresponding
+          values.
+
+      Example:
+          model = XGBRegressor()
+          params_df = get_params(model)
+          print(params_df)
+      """
+    return pd.DataFrame(list(model.get_params().items()), columns=['Parameter', 'Value'])

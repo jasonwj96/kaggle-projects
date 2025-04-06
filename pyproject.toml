@@ -1,6 +1,4 @@
 [project]
-data_repository_linux = "/home/jason/Desktop/data"
-data_repository_windows = "C:/Users/Admin/Desktop/Datasets"
 name = "kaggle-projects"
 
 [tool.poetry]
@@ -13,7 +11,7 @@ package-mode = false
 python = "^3.11"
 numpy = "^2.2.0"
 torch = "^2.5.1"
-pandas="^2.2.3"
+pandas = "^2.2.3"
 jupyter = "^1.1.1"
 plotly = "^6.0.0"
 scikit-learn = "^1.6.1"
