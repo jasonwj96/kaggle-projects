@@ -160,3 +160,7 @@ cython_debug/
 .idea/
 data/
 *.lock
+
+*.html
+
+test.ipynb
