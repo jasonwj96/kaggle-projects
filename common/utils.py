@@ -61,7 +61,7 @@ def load_dataset(name: str, dataset_type: DatasetType = DatasetType.TRAIN,
         return pd.read_csv(dataset_path, index_col=[0])
 
 
-def optimize_memory(props, deep=False):
+def optimize_memory(dataframe, deep=False):
     """
        Optimizes memory usage of a pandas DataFrame by converting columns to more efficient data
        types.
@@ -74,7 +74,7 @@ def optimize_memory(props, deep=False):
        the data type.
 
        Args:
-           props (pandas.DataFrame): The DataFrame whose memory usage needs to be optimized.
+           dataframe (pandas.DataFrame): The DataFrame whose memory usage needs to be optimized.
            deep (bool, optional): Whether or not to perform a deep memory usage calculation.
            Defaults to False.
 
@@ -88,33 +88,33 @@ def optimize_memory(props, deep=False):
        Example:
            optimized_df, na_columns = optimize_memory(df)
        """
-    start_mem_usg = props.memory_usage(deep=deep).sum() / 1024 ** 2
+    start_mem_usg = dataframe.memory_usage(deep=deep).sum() / 1024 ** 2
 
     print("Memory usage of properties dataframe is :", start_mem_usg, " MB")
 
     na_list = []  # Keeps track of columns that have missing values filled in.
 
-    for col in props.columns:
-        if props[col].dtype != object:  # Exclude strings
+    for col in dataframe.columns:
+        if dataframe[col].dtype != object:  # Exclude strings
 
             # Print current column type
             print("******************************")
             print("Column: ", col)
-            print("dtype before: ", props[col].dtype)
+            print("dtype before: ", dataframe[col].dtype)
 
             # make variables for Int, max and min
             is_int = False
-            mx = props[col].max()
-            mn = props[col].min()
+            mx = dataframe[col].max()
+            mn = dataframe[col].min()
 
             # Integer does not support NA, therefore, NA needs to be filled
-            if not np.isfinite(props[col]).all():
+            if not np.isfinite(dataframe[col]).all():
                 na_list.append(col)
-                props[col].fillna(mn - 1, inplace=True)
+                dataframe[col].fillna(mn - 1, inplace=True)
 
             # test if column can be converted to an integer
-            asint = props[col].fillna(0).astype(np.int64)
-            result = (props[col] - asint)
+            asint = dataframe[col].fillna(0).astype(np.int64)
+            result = (dataframe[col] - asint)
             result = result.sum()
             if -0.01 < result < 0.01:
                 is_int = True
@@ -123,37 +123,37 @@ def optimize_memory(props, deep=False):
             if is_int:
                 if mn >= 0:
                     if mx < 255:
-                        props[col] = props[col].astype(np.uint8)
+                        dataframe[col] = dataframe[col].astype(np.uint8)
                     elif mx < 65535:
-                        props[col] = props[col].astype(np.uint16)
+                        dataframe[col] = dataframe[col].astype(np.uint16)
                     elif mx < 4294967295:
-                        props[col] = props[col].astype(np.uint32)
+                        dataframe[col] = dataframe[col].astype(np.uint32)
                     else:
-                        props[col] = props[col].astype(np.uint64)
+                        dataframe[col] = dataframe[col].astype(np.uint64)
                 else:
                     if mn > np.iinfo(np.int8).min and mx < np.iinfo(np.int8).max:
-                        props[col] = props[col].astype(np.int8)
+                        dataframe[col] = dataframe[col].astype(np.int8)
                     elif mn > np.iinfo(np.int16).min and mx < np.iinfo(np.int16).max:
-                        props[col] = props[col].astype(np.int16)
+                        dataframe[col] = dataframe[col].astype(np.int16)
                     elif mn > np.iinfo(np.int32).min and mx < np.iinfo(np.int32).max:
-                        props[col] = props[col].astype(np.int32)
+                        dataframe[col] = dataframe[col].astype(np.int32)
                     elif mn > np.iinfo(np.int64).min and mx < np.iinfo(np.int64).max:
-                        props[col] = props[col].astype(np.int64)
+                        dataframe[col] = dataframe[col].astype(np.int64)
 
                         # Make float datatypes 32 bit
             else:
-                props[col] = props[col].astype(np.float32)
+                dataframe[col] = dataframe[col].astype(np.float32)
 
             # Print new column type
-            print("dtype after: ", props[col].dtype)
+            print("dtype after: ", dataframe[col].dtype)
             print("******************************")
 
     # Print final result
     print("___MEMORY USAGE AFTER COMPLETION:___")
-    mem_usg = props.memory_usage().sum() / 1024 ** 2
+    mem_usg = dataframe.memory_usage().sum() / 1024 ** 2
     print("Memory usage is: ", mem_usg, " MB")
     print("This is ", 100 * mem_usg / start_mem_usg, "% of the initial size")
-    return props, na_list
+    return dataframe, na_list
 
 
 def get_params(model: XGBRegressor | XGBClassifier):
