@@ -61,7 +61,7 @@ def load_dataset(name: str, dataset_type: DatasetType = DatasetType.TRAIN,
         return pd.read_csv(dataset_path, index_col=[0])
 
 
-def optimize_memory(dataframe, deep=False):
+def optimize_memory(dataframe, deep=False) -> tuple[pd.DataFrame, list]:
     """
        Optimizes memory usage of a pandas DataFrame by converting columns to more efficient data
        types.
