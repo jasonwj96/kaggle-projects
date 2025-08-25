@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
-
 import pandas as pd
 import numpy as np
 from xgboost import XGBRegressor, XGBClassifier
 from enum import Enum
+import torch
+import random
 
 
 class DatasetType(Enum):
@@ -13,35 +14,36 @@ class DatasetType(Enum):
     VALIDATION = 2
 
 
-def load_dataset(name: str, dataset_type: DatasetType = DatasetType.TRAIN,
-                 index: bool = True) -> pd.DataFrame:
+def load_dataset(
+    name: str, dataset_type: DatasetType = DatasetType.TRAIN, index: bool = True
+) -> pd.DataFrame:
     """
-      Loads a dataset from the specified data repository.
+    Loads a dataset from the specified data repository.
 
-      This function constructs the path to a dataset based on the provided `name` and
-      `dataset_type`.
-      It retrieves the base data repository path from the environment variable `DATA_REPOSITORY`.
-      If the environment variable is not set, an `EnvironmentError` is raised.
+    This function constructs the path to a dataset based on the provided `name` and
+    `dataset_type`.
+    It retrieves the base data repository path from the environment variable `DATA_REPOSITORY`.
+    If the environment variable is not set, an `EnvironmentError` is raised.
 
-      Args:
-          name (str): The name of the dataset to load (e.g., "dataset_name").
-          dataset_type (DatasetType, optional): The type of dataset to load. Can be one of
-              `DatasetType.TRAIN`, `DatasetType.TEST`, or `DatasetType.VALIDATION`. Defaults to
-              `DatasetType.TRAIN`.
-          index (bool, optional): Whether to set the first column of the CSV file as the index.
-          Defaults to `True`.
+    Args:
+        name (str): The name of the dataset to load (e.g., "dataset_name").
+        dataset_type (DatasetType, optional): The type of dataset to load. Can be one of
+            `DatasetType.TRAIN`, `DatasetType.TEST`, or `DatasetType.VALIDATION`. Defaults to
+            `DatasetType.TRAIN`.
+        index (bool, optional): Whether to set the first column of the CSV file as the index.
+        Defaults to `True`.
 
-      Raises:
-          EnvironmentError: If the environment variable `DATA_REPOSITORY` is not set.
+    Raises:
+        EnvironmentError: If the environment variable `DATA_REPOSITORY` is not set.
 
-      Returns:
-          pd.DataFrame: A pandas DataFrame containing the loaded dataset.
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the loaded dataset.
 
-      Example:
-          df = load_dataset("my_dataset", dataset_type=DatasetType.TEST, index=False)
-      """
+    Example:
+        df = load_dataset("my_dataset", dataset_type=DatasetType.TEST, index=False)
+    """
 
-    dataset_path = os.getenv('DATA_REPOSITORY')
+    dataset_path = os.getenv("DATA_REPOSITORY")
 
     if dataset_path is None:
         raise EnvironmentError("Required environment variable 'DATA_REPOSITORY' is not set.")
@@ -63,32 +65,32 @@ def load_dataset(name: str, dataset_type: DatasetType = DatasetType.TRAIN,
 
 def optimize_memory(dataframe, deep=False):
     """
-       Optimizes memory usage of a pandas DataFrame by converting columns to more efficient data
-       types.
+    Optimizes memory usage of a pandas DataFrame by converting columns to more efficient data
+    types.
 
-       This function iterates over the columns of the input DataFrame (`props`) and attempts to
-       downcast
-       numerical columns to the smallest possible integer or float data types without losing
-       information.
-       If a column contains missing values (NaNs), it will be filled before attempting to convert
-       the data type.
+    This function iterates over the columns of the input DataFrame (`props`) and attempts to
+    downcast
+    numerical columns to the smallest possible integer or float data types without losing
+    information.
+    If a column contains missing values (NaNs), it will be filled before attempting to convert
+    the data type.
 
-       Args:
-           dataframe (pandas.DataFrame): The DataFrame whose memory usage needs to be optimized.
-           deep (bool, optional): Whether or not to perform a deep memory usage calculation.
-           Defaults to False.
+    Args:
+        dataframe (pandas.DataFrame): The DataFrame whose memory usage needs to be optimized.
+        deep (bool, optional): Whether or not to perform a deep memory usage calculation.
+        Defaults to False.
 
-       Returns:
-           pandas.DataFrame: The input DataFrame with optimized memory usage.
-           list: A list of column names where missing values were filled.
+    Returns:
+        pandas.DataFrame: The input DataFrame with optimized memory usage.
+        list: A list of column names where missing values were filled.
 
-       Raises:
-           None: This function does not raise any exceptions.
+    Raises:
+        None: This function does not raise any exceptions.
 
-       Example:
-           optimized_df, na_columns = optimize_memory(df)
-       """
-    start_mem_usg = dataframe.memory_usage(deep=deep).sum() / 1024 ** 2
+    Example:
+        optimized_df, na_columns = optimize_memory(df)
+    """
+    start_mem_usg = dataframe.memory_usage(deep=deep).sum() / 1024**2
 
     print("Memory usage of properties dataframe is :", start_mem_usg, " MB")
 
@@ -114,7 +116,7 @@ def optimize_memory(dataframe, deep=False):
 
             # test if column can be converted to an integer
             asint = dataframe[col].fillna(0).astype(np.int64)
-            result = (dataframe[col] - asint)
+            result = dataframe[col] - asint
             result = result.sum()
             if -0.01 < result < 0.01:
                 is_int = True
@@ -150,7 +152,7 @@ def optimize_memory(dataframe, deep=False):
 
     # Print final result
     print("___MEMORY USAGE AFTER COMPLETION:___")
-    mem_usg = dataframe.memory_usage().sum() / 1024 ** 2
+    mem_usg = dataframe.memory_usage().sum() / 1024**2
     print("Memory usage is: ", mem_usg, " MB")
     print("This is ", 100 * mem_usg / start_mem_usg, "% of the initial size")
     return dataframe, na_list
@@ -158,23 +160,23 @@ def optimize_memory(dataframe, deep=False):
 
 def get_params(model: XGBRegressor | XGBClassifier):
     """
-      Retrieves the hyperparameters of a given XGBoost model (either XGBRegressor or XGBClassifier).
+    Retrieves the hyperparameters of a given XGBoost model (either XGBRegressor or XGBClassifier).
 
-      This function calls the `get_params()` method on the provided XGBoost model and returns the
-      parameters in a pandas DataFrame for easy inspection and analysis. The DataFrame contains two
-      columns: 'Parameter' (the name of the hyperparameter) and 'Value' (the corresponding value).
+    This function calls the `get_params()` method on the provided XGBoost model and returns the
+    parameters in a pandas DataFrame for easy inspection and analysis. The DataFrame contains two
+    columns: 'Parameter' (the name of the hyperparameter) and 'Value' (the corresponding value).
 
-      Args:
-          model (XGBRegressor | XGBClassifier): The XGBoost model (either a regressor or classifier)
-              from which to retrieve the hyperparameters.
+    Args:
+        model (XGBRegressor | XGBClassifier): The XGBoost model (either a regressor or classifier)
+            from which to retrieve the hyperparameters.
 
-      Returns:
-          pandas.DataFrame: A DataFrame containing the hyperparameters and their corresponding
-          values.
+    Returns:
+        pandas.DataFrame: A DataFrame containing the hyperparameters and their corresponding
+        values.
 
-      Example:
-          model = XGBRegressor()
-          params_df = get_params(model)
-          print(params_df)
-      """
-    return pd.DataFrame(list(model.get_params().items()), columns=['Parameter', 'Value'])
+    Example:
+        model = XGBRegressor()
+        params_df = get_params(model)
+        print(params_df)
+    """
+    return pd.DataFrame(list(model.get_params().items()), columns=["Parameter", "Value"])
