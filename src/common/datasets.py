@@ -9,10 +9,11 @@ from PIL import Image
 import os
 from torch.utils.data import Dataset
 from PIL import Image
+import pandas as pd
 
 
 class LandmarkDataset(Dataset):
-    def __init__(self, features, target, transform=None, **parameters):
+    def __init__(self, features: pd.DataFrame, target: pd.DataFrame, transform=None, **parameters):
         """
         Args:
             features (list): list of image IDs
@@ -23,8 +24,12 @@ class LandmarkDataset(Dataset):
                 - colorspace: image mode (default "RGB")
                 - directory: dataset root (default cwd)
         """
-        self.features = features
-        self.target = target
+        if "id" not in features.columns:
+            raise ValueError("features DataFrame must contain an 'id' column")
+
+        self.features = features["id"].astype(str).tolist()
+        self.target = {str(fid): int(lbl) for fid, lbl in zip(features["id"], target)}
+
         self.format = parameters.get("format", "jpg")
         self.colorspace = parameters.get("colorspace", "RGB")
         self.directory = parameters.get("directory", os.getcwd())
@@ -35,10 +40,14 @@ class LandmarkDataset(Dataset):
 
     def __getitem__(self, index):
         feature_id = self.features[index]
-        target_id = self.target[feature_id]
 
         if len(feature_id) <= 3:
             raise ValueError(f"[Error] - invalid feature ID {feature_id}")
+
+        try:
+            target_id = self.target[feature_id]
+        except KeyError:
+            raise KeyError(f"Feature ID {feature_id} not found in target dict")
 
         path = os.path.join(
             self.directory,
